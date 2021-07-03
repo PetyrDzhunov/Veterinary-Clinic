@@ -23,7 +23,7 @@ const htmlSelectors = {
 };
 
 
-const onlyLettersRegex = /^[A-Za-z ]+$/g
+const onlyLettersRegex = /^[A-Za-z ]+$/
 const baseUrl = `https://veterinary-clinic-74905-default-rtdb.europe-west1.firebasedatabase.app/`;
 
 function createDOMElement(type, text, attributes, events, ...children) {
@@ -67,22 +67,27 @@ function addPatient(e) {
         })
     };
     let isErrorPresent = false;
+
     const error = { message: '' };
+
     if (patientNameElement.value == '') {
-        error.message += 'Patient input could not be empty!'
+        error.message += 'Patient input could not be empty!';
         isErrorPresent = true;
-    } else if (patientNameElement.length <= 3) {
-        error.message += 'Patient input should be more than 3 letters'
+    } else if (patientNameElement.value.length <= 3) {
+        error.message += 'Patient input should be more than 3 letters';
         isErrorPresent = true;
-    } else if (!onlyLettersRegex.test(patientNameElement.value)) {
-        error.message += 'Patient input should containt only letters'
+    } else if (!(onlyLettersRegex.test(patientNameElement.value))) {
+        error.message += 'Patient input should contain only letters';
         isErrorPresent = true;
     }
-    clicked = false
+
+
+
+    clicked = false;
     if (isErrorPresent) {
         handleError(error)
         isErrorPresent = false;
-        clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement)
+        clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement);
         return;
     }
 
