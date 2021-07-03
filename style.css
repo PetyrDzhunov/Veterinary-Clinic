@@ -32,10 +32,17 @@ body {
     align-items: center;
 }
 
+#error-container {
+    width: 30%;
+    text-align: center;
+    align-items: center;
+    margin: 0 auto;
+}
+
 .error-paragraph {
     color: red;
     background-color: aqua;
-    width: 750px;
+    width: 300px;
     position: relative;
     text-align: center;
     align-items: center;
