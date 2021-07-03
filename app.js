@@ -23,7 +23,7 @@ const htmlSelectors = {
 };
 
 
-
+const onlyLettersRegex = /^[A-Za-z ]+$/
 const baseUrl = `https://veterinary-clinic-74905-default-rtdb.europe-west1.firebasedatabase.app/`;
 
 function createDOMElement(type, text, attributes, events, ...children) {
@@ -49,6 +49,7 @@ htmlSelectors['showPatientsButton']().addEventListener('click', fetchAllPatients
 htmlSelectors['addPatientButton']().addEventListener('click', addPatient)
 htmlSelectors['editPatientButton']().addEventListener('click', editPatient)
 
+
 function addPatient(e) {
     e.preventDefault();
     const patientNameElement = htmlSelectors['patientNameElement']();
@@ -65,15 +66,35 @@ function addPatient(e) {
             clinicalSymptoms: clinicalSymptomsElement.value
         })
     };
+    let isErrorPresent = false;
 
-    clicked = false
+    const error = { message: '' };
+
+    if (patientNameElement.value == '') {
+        error.message += 'Patient input could not be empty!';
+        isErrorPresent = true;
+    } else if (patientNameElement.value.length <= 3) {
+        error.message += 'Patient input should be more than 3 letters';
+        isErrorPresent = true;
+    } else if (!(onlyLettersRegex.test(patientNameElement.value))) {
+        error.message += 'Patient input should contain only letters';
+        isErrorPresent = true;
+    }
+
+
+
+    clicked = false;
+    if (isErrorPresent) {
+        handleError(error)
+        isErrorPresent = false;
+        clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement);
+        return;
+    }
+
     fetch(`${baseUrl}doctors/patients/.json`, initObj)
         .then(fetchAllPatients)
         .catch(handleError)
-    patientNameElement.value = '';
-    patientAgeElement.value = '';
-    clinicalSymptomsElement.value = '';
-
+    clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement)
 }
 
 
@@ -208,13 +229,20 @@ function handleError(err) {
     const errorContainer = htmlSelectors['errorContainer']();
     errorContainer.style.display = 'block';
     errorContainer.textContent = err.message;
+    errorContainer.classList.add('alert')
+    errorContainer.classList.add('alert-danger')
     setTimeout(() => {
         errorContainer.style.display = 'none'
+        errorContainer.classList = [];
     }, 5000);
 }
 
 
-
+function clearInputFields(name, age, symptoms) {
+    name.value = '';
+    age.value = '';
+    symptoms.value = ''
+}
 
 
 
