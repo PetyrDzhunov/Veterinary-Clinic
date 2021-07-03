@@ -103,13 +103,16 @@ function addPatient(e) {
 let clicked = false;
 
 function renderPatients(patientsData) {
+
     let index = 1;
     const patientsContainer = htmlSelectors['patientsContainer']();
     const showPatientsButton = htmlSelectors['showPatientsButton']();
     if (patientsContainer.innerHTML !== '') {
         patientsContainer.innerHTML = '';
     }
-
+    if (patientsData == null || patientsData == []) {
+        return;
+    }
     if (!clicked) {
         Object.entries(patientsData).forEach(([key, patient]) => {
             const tableRow = createDOMElement(
@@ -168,7 +171,6 @@ function editPatient(e) {
     const editPatientAge = htmlSelectors['editPatientAge']();
     const editPatientSymptoms = htmlSelectors['editPatientSymptoms']();
     const editPatientContainer = htmlSelectors['editPatientContainer']();
-    const editForm = htmlSelectors['editForm']
     if (editPatientName.value !== '' && editPatientAge.value !== '' && editPatientSymptoms.value !== '') {
         const id = this.getAttribute('data-key');
         const initObj = {

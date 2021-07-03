@@ -18,8 +18,9 @@ td:hover {
     display: none;
 }
 
-button {
-    cursor: pointer;
+#add-patient-button:hover {
+    background-color: red;
+    transition: 0.5s ease;
 }
 
 body {
