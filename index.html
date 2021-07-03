@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="/node_modules/handlebars/dist/handlebars.min.js"></script>
+    <title>Veterinary Clinic</title>
+
+</head>
+
+<body>
+    <div class="user-container">
+        <div id="error-container"></div>
+        <h2 id="sub-header">Please log in!</h2>
+        <div class="login-div">
+            <label for="email">Email:</label>
+            <input type="email" placeholder="email" id="email" />
+            <label for="password">Password:</label>
+            <input type="password" placeholder="password" id="password" />
+            <button id="login-button">Login</button>
+        </div>
+    </div>
+
+
+    <div class="patients-container">
+        <div class="patients-info">
+            <button id="show-patients-button" class="btn btn-info">
+          Show Patients
+        </button>
+            <table id="patient-list">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Symptoms</th>
+                        <th>Action
+                        </th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="add-patient-container">
+        <form>
+            <h3>Add patient</h3>
+            <label for="name">Name:</label>
+            <input type="text" placeholder="name" id="patientName" />
+            <label for="age">Age:</label>
+            <input placeholder="age" id="patientAge" type="number" />
+            <label for="clinicalSymptoms">Clinical Symptoms:</label>
+            <input name="Symptoms" id="clinicalSymptoms" cols="30" rows="3" placeholder="Clinical Symptoms" />
+            <button class="btn btn-info" id="add-patient-button" type="submit">
+          Add Patient
+        </button>
+        </form>
+    </div>
+
+    <div class="edit-patient-container">
+        <form class="edit-form">
+            <h3>Edit patient</h3>
+            <label for="name">Name:</label>
+            <input type="text" placeholder="name" id="edit-patientName" />
+            <label for="age">Age:</label>
+            <input type="number" placeholder="age" id="edit-patientAge" />
+            <label for="clinicalSymptoms">Clinical Symptoms:</label>
+            <input name="Symptoms" id="edit-clinicalSymptoms" cols="30" rows="3" placeholder="Clinical Symptoms" />
+            <button class="btn btn-info" id="edit-patient-button" type="submit">
+          Edit Patient
+        </button>
+        </form>
+    </div>
+
+    <div class="contacts-container" style="display: none">
+        <div class="div-contacts">
+            <button class="button-contacts">Contacts</button>
+            <p id="doctor-phone"></p>
+            <p id="doctor-email"></p>
+        </div>
+    </div>
+    <script src="auth.js"></script>
+    <script src="app.js" type="module"></script>
+    <script type="text/x-handlebars-template" id="person-template">
+    </script>
+
+</body>
+
+</html>
