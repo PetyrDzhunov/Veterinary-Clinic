@@ -22,8 +22,8 @@ const htmlSelectors = {
     'editForm': () => document.querySelector('.edit-form')
 };
 
-
-const onlyLettersRegex = /^[A-Za-z ]+$/
+const onlyLettersRegex = /^[A-Za-z ]{3,}$/
+const symptomsRegex = /([A-Za-z ,.]{3,})/
 const baseUrl = `https://veterinary-clinic-74905-default-rtdb.europe-west1.firebasedatabase.app/`;
 
 function createDOMElement(type, text, attributes, events, ...children) {
@@ -31,7 +31,7 @@ function createDOMElement(type, text, attributes, events, ...children) {
 
     if (text !== '') {
         domElement.textContent = text
-    }
+    };
 
     Object.entries(attributes).forEach(([attrKey, attrValue]) => {
         domElement.setAttribute(attrKey, attrValue);
@@ -42,68 +42,52 @@ function createDOMElement(type, text, attributes, events, ...children) {
     })
 
     children.forEach((child) => domElement.appendChild(child));
-    return domElement
+    return domElement;
 }
-//eventListeners
-htmlSelectors['showPatientsButton']().addEventListener('click', fetchAllPatients);
-htmlSelectors['addPatientButton']().addEventListener('click', addPatient)
-htmlSelectors['editPatientButton']().addEventListener('click', editPatient)
 
+htmlSelectors['showPatientsButton']().addEventListener('click', getAllPatientsHandler);
+htmlSelectors['addPatientButton']().addEventListener('click', addPatientHandler)
+htmlSelectors['editPatientButton']().addEventListener('click', editPatientHandler)
+let clicked = false;
 
-function addPatient(e) {
+async function addPatientHandler(e) {
     e.preventDefault();
     const patientNameElement = htmlSelectors['patientNameElement']();
     const patientAgeElement = htmlSelectors['patientAgeElement']();
     const clinicalSymptomsElement = htmlSelectors['clinicalSymptomsElement']();
+    const patient = { name: patientNameElement.value, age: patientAgeElement.value, clinicalSymptoms: formatString(clinicalSymptomsElement.value) };
+    const validateResult = validatePatient(patient);
+    if (validateResult.isErrorPresent) {
+        handleError(validateResult.message)
+    } else {
+        await addPatient(patient);
+        clicked = false;
+        const patients = await getAllPatients();
+        renderPatients(patients)
+    }
+    clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement);
+};
+
+function formatString(string) {
+    return string.split('/[, ]+/').join(', ')
+};
+
+async function addPatient(patient) {
     let initObj = {
         method: "POST",
         headers: {
             "Content-type": "application/json"
         },
         body: JSON.stringify({
-            name: patientNameElement.value,
-            age: patientAgeElement.value,
-            clinicalSymptoms: clinicalSymptomsElement.value
+            name: patient.name,
+            age: patient.age,
+            clinicalSymptoms: patient.clinicalSymptoms,
         })
     };
-    let isErrorPresent = false;
-
-    const error = { message: '' };
-
-    if (patientNameElement.value == '') {
-        error.message += 'Patient input could not be empty!';
-        isErrorPresent = true;
-    } else if (patientNameElement.value.length <= 3) {
-        error.message += 'Patient input should be more than 3 letters';
-        isErrorPresent = true;
-    } else if (!(onlyLettersRegex.test(patientNameElement.value))) {
-        error.message += 'Patient input should contain only letters';
-        isErrorPresent = true;
-    }
-
-
-
-    clicked = false;
-    if (isErrorPresent) {
-        handleError(error)
-        isErrorPresent = false;
-        clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement);
-        return;
-    }
-
-    fetch(`${baseUrl}doctors/patients/.json`, initObj)
-        .then(fetchAllPatients)
-        .catch(handleError)
-    clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement)
-}
-
-
-
-
-let clicked = false;
+    await fetch(`${baseUrl}doctors/patients/.json`, initObj)
+};
 
 function renderPatients(patientsData) {
-
     let index = 1;
     const patientsContainer = htmlSelectors['patientsContainer']();
     const showPatientsButton = htmlSelectors['showPatientsButton']();
@@ -113,6 +97,7 @@ function renderPatients(patientsData) {
     if (patientsData == null || patientsData == []) {
         return;
     }
+
     if (!clicked) {
         Object.entries(patientsData).forEach(([key, patient]) => {
             const tableRow = createDOMElement(
@@ -121,10 +106,10 @@ function renderPatients(patientsData) {
                 createDOMElement('td', index++, {}, {}, ),
                 createDOMElement('td', patient.name, {}, {}, ),
                 createDOMElement('td', patient.age, {}, {}, ),
-                createDOMElement('td', Array.isArray(patient.clinicalSymptoms) ? patient.clinicalSymptoms.join(', ') : Array.from(patient.clinicalSymptoms).join(''), {}, {}, ),
+                createDOMElement('td', patient.clinicalSymptoms, {}, {}, ),
                 createDOMElement('td', '', {}, {},
                     createDOMElement('button', 'Edit', { 'data-key': key }, { click: loadEditPatientForm }),
-                    createDOMElement('button', 'Delete', { 'data-key': key }, { click: deletePatient })
+                    createDOMElement('button', 'Delete', { 'data-key': key }, { click: deletePatientHandler })
                 )
             )
             patientsContainer.appendChild(tableRow)
@@ -135,237 +120,115 @@ function renderPatients(patientsData) {
         showPatientsButton.textContent = 'Show Patients'
         clicked = false;
     }
+};
 
-}
-
-function loadEditPatientForm(e) {
-    e.preventDefault();
+async function loadEditPatientForm() {
     const id = this.getAttribute('data-key');
+    const patient = await getPatient(id);
+    htmlSelectors['editPatientName']().value = patient.name;
+    htmlSelectors['editPatientAge']().value = patient.age;
+    htmlSelectors['editPatientSymptoms']().value = patient.clinicalSymptoms;
+    htmlSelectors['editPatientContainer']().style.display = 'block'
+    htmlSelectors['editPatientButton']().setAttribute('data-key', id)
+};
 
+async function editPatient(patient, id) {
     const initObj = {
         method: "PATCH",
         headers: {
             'Content-type': 'application/json'
         },
-        body: JSON.stringify({})
+        body: JSON.stringify(patient)
     }
-    fetch(`${baseUrl}doctors/patients/${id}/.json`)
-        .then(res => res.json())
-        .then(({ age, clinicalSymptoms, name }) => {
-            console.log(age, clinicalSymptoms, name);
-            htmlSelectors['editPatientName']().value = name;
-            htmlSelectors['editPatientAge']().value = age;
-            clinicalSymptoms = Array.isArray(clinicalSymptoms) ? clinicalSymptoms.join(', ') : Array.from(clinicalSymptoms).join('')
-            htmlSelectors['editPatientSymptoms']().value = clinicalSymptoms
-            htmlSelectors['editPatientContainer']().style.display = 'block'
-            htmlSelectors['editPatientButton']().setAttribute('data-key', id)
-        })
-        .catch(handleError)
-}
+    clicked = false;
+    await fetch(`${baseUrl}doctors/patients/${id}/.json`, initObj);
+};
 
+function validatePatient(patient) {
+    const error = { message: '', isErrorPresent: false };
+    if (patient.age === '') {
+        error.message += 'Patient age must not be empty!';
+        error.isErrorPresent = true;
+    };
 
+    if (!(onlyLettersRegex.test(patient.name))) {
+        error.message += 'Invalid name';
+        error.isErrorPresent = true;
+    };
 
-function editPatient(e) {
-    e.preventDefault();
-    const editPatientName = htmlSelectors['editPatientName']();
-    const editPatientAge = htmlSelectors['editPatientAge']();
-    const editPatientSymptoms = htmlSelectors['editPatientSymptoms']();
+    if (!(symptomsRegex.test(patient.clinicalSymptoms))) {
+        error.message += 'Patient should have at least 1 symptom!';
+        error.isErrorPresent = true;
+    };
+    return error;
+};
+
+async function editPatientHandler(e) {
     const editPatientContainer = htmlSelectors['editPatientContainer']();
-    if (editPatientName.value !== '' && editPatientAge.value !== '' && editPatientSymptoms.value !== '') {
-        const id = this.getAttribute('data-key');
-        const initObj = {
-            method: "PATCH",
-            headers: {
-                'Content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: editPatientName.value,
-                age: editPatientAge.value,
-                clinicalSymptoms: editPatientSymptoms.value
-            })
-        }
-        editPatientContainer.style.display = 'none';
-        clicked = false
-        fetch(`${baseUrl}doctors/patients/${id}/.json`, initObj)
-            .then(fetchAllPatients)
-            .catch(handleError)
-    } else {
-        const error = { message: '' };
-        if (editPatientName.value === '') {
-            error.message += 'Patient name could not be empty!'
-        }
-        if (editPatientAge.value === '') {
-            error.message += 'Patient age must not be empty!'
-        }
-        if (editPatientSymptoms.value === '') {
-            error.message += 'Patient symptoms must not be empty!'
-        }
-        handleError(error)
-    }
-
-}
-
-function deletePatient(e) {
     const id = this.getAttribute('data-key');
+    e.preventDefault();
+    const patientNameElement = htmlSelectors['editPatientName']();
+    const patientAgeElement = htmlSelectors['editPatientAge']();
+    const clinicalSymptomsElement = htmlSelectors['editPatientSymptoms']();
+    const patient = { name: patientNameElement.value, age: patientAgeElement.value, clinicalSymptoms: formatString(clinicalSymptomsElement.value) };
+    const validateResult = validatePatient(patient);
+    if (validateResult.isErrorPresent) {
+        handleError(validateResult.message)
+    } else {
+        await editPatient(patient, id);
+        clicked = false;
+        const patients = await getAllPatients();
+        renderPatients(patients)
+    }
+    clearInputFields(patientNameElement, patientAgeElement, clinicalSymptomsElement);
+    editPatientContainer.style.display = 'none'
+};
 
+async function deletePatientHandler(e) {
+    const id = this.getAttribute('data-key');
+    const deletedPatient = await deletePatient(id);
+    const patients = await getAllPatients();
+    clicked = false;
+    renderPatients(patients)
+};
+
+async function deletePatient(patientID) {
     let initObj = {
         method: "DELETE",
         headers: {
             'Content-type': 'application/json'
         }
-    }
-    clicked = false
-    fetch(`${baseUrl}doctors/patients/${id}/.json`, initObj)
-        .then(fetchAllPatients)
-        .catch(handleError)
-}
+    };
+    await fetch(`${baseUrl}doctors/patients/${patientID}/.json`, initObj);
+};
 
-function fetchAllPatients() {
-    fetch(`${baseUrl}doctors/patients/.json`)
-        .then(res => res.json())
-        .then(renderPatients)
-        .catch(handleError)
-}
+async function getPatient(id) {
+    return await (await fetch(`${baseUrl}doctors/patients/${id}/.json`)).json();
+};
 
-function handleError(err) {
+async function getAllPatientsHandler() {
+    const patients = await getAllPatients();
+    renderPatients(patients)
+};
+
+async function getAllPatients() {
+    return await (await fetch(`${baseUrl}doctors/patients/.json`)).json()
+};
+
+function handleError(error) {
     const errorContainer = htmlSelectors['errorContainer']();
     errorContainer.style.display = 'block';
-    errorContainer.textContent = err.message;
+    errorContainer.textContent = error;
     errorContainer.classList.add('alert')
     errorContainer.classList.add('alert-danger')
     setTimeout(() => {
         errorContainer.style.display = 'none'
         errorContainer.classList = [];
     }, 5000);
-}
-
+};
 
 function clearInputFields(name, age, symptoms) {
     name.value = '';
     age.value = '';
     symptoms.value = ''
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function getDoctorData() {
-//     fetch(`${baseUrl}doctors.json`)
-//         .then((res) => res.json())
-//         .then((data) => {
-//             key = Object.keys(data)[0];
-//             dataObject = data[key];
-//         });
-
-//     event Listeners
-//     contactsButton.addEventListener(
-//         'click',
-//         showContacts(dataObject.email, dataObject.phoneNumber)
-//     );
-//     showPatientsButton.addEventListener('click', showPatients);
-//     addPatientButton.addEventListener('click', addPatient);
-
-//     function createElement(ele, classes, content) {
-//         let element = document.createElement(ele);
-//         element.className = classes;
-//         element.innerHTML = content;
-//         return element;
-//     }
-
-//     function resetInputFields(name, age, breed, symptoms) {
-//         name.value = '';
-//         age.value = '';
-//         breed.value = '';
-//         symptoms.value = '';
-//     }
-
-//     function showContacts(email, phoneNumber) {
-//         let clicked = false;
-//         if (!clicked) {
-//             phoneParagraph.style.display = 'block';
-//             phoneParagraph.textContent = phoneNumber;
-//             emailParagraph.style.display = 'block';
-//             emailParagraph.textContent = email;
-//             contactsDiv.style.background = 'red';
-//             clicked = true;
-//         } else {
-//             phoneParagraph.style.display = 'none';
-//             emailParagraph.style.display = 'none';
-//             contactsDiv.style.display = 'none';
-//             clicked = false;
-//         }
-//     }
-
-//     let clicked = false;
-
-//     function showPatients(e) {
-//         if (!clicked) {
-//             patientsList.style.display = 'block';
-//             Object.entries(dataObject.patients).forEach(([key, { age, breed, clinicalSymptoms, gender, name, possibleDiagnosis }, ]) => {
-//                 let liContent = `${name} - ${age} - ${breed} - ${gender} - \n${clinicalSymptoms.join(', ')}`;
-//                 let liElement = createElement('li', 'list-group-item', liContent);
-//                 patientsList.appendChild(liElement);
-//             });
-//             clicked = true;
-//         } else {
-
-//         }
-//     }
-
-//     function addPatient(e) {
-//         e.preventDefault();
-//         let patient = {
-//             name: patientNameElement.value,
-//             age: patientAgeElement.value,
-//             breed: patientBreedElement.value,
-//             symptoms: clinicalSymptomsElement.value,
-//         };
-
-//         let liContent = `${patient.name} - ${patient.age} - ${patient.breed} - \n${patient.symptoms}`;
-//         let liElement = createElement('li', 'list-group-item', liContent);
-
-//         patientsList.appendChild(liElement);
-//         console.log(key);
-//         fetch(`${baseUrl}doctors/${key}/patients.json`, {
-//                 method: 'POST',
-//                 body: JSON.stringify(patient),
-//             })
-//             .then(showPatients)
-//             .catch(handleError)
-//         resetInputFields(
-//             patientNameElement,
-//             patientAgeElement,
-//             patientBreedElement,
-//             clinicalSymptomsElement
-//         );
-//     }
-
-//     function handleError(err) {
-//         return document.createElement('p').textContent = err.message;
-//     }
-// }
-// function getPatients(e) {
-//   console.log(e.target);
-// }
+};
